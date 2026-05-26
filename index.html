@@ -1,0 +1,927 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Draggable Images - Listening Challenge</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            /* Prevent native OS drag-to-refresh and elastic bounce behavior */
+            overscroll-behavior-y: contain;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        #app-header {
+            text-align: center;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        #level-nav-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 5px;
+        }
+
+        /* Subtle Navigation Arrows */
+        .nav-arrow {
+            background: none;
+            border: 1px solid #334155;
+            color: #94a3b8;
+            font-size: 1.2rem;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .nav-arrow:hover {
+            color: #f1f5f9;
+            border-color: #e9d5ff;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-arrow:active {
+            transform: scale(0.9);
+        }
+
+        #level-indicator {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #e9d5ff;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        #level-instruction {
+            font-size: 0.95rem;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            max-width: 600px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        /* Responsive vertical height and fluid width */
+        #drag-container {
+            position: relative;
+            width: 95%;
+            max-width: 800px;
+            height: 250px;
+            border: 2px solid #ccc;
+            margin: 5px auto;
+            background: linear-gradient(135deg, #a855f7, #f9a8d4);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            touch-action: none; /* Block browser panning on touch drag */
+        }
+
+        /* Original absolute draggable class with platform adaptations */
+        .draggable-image {
+            position: absolute;
+            cursor: grab;
+            width: 75px; 
+            height: 75px; 
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            color: #333;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            
+            /* Multi-OS UI Drag optimization properties */
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .draggable-image:active {
+            transform: scale(1.15);
+            cursor: grabbing;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.4);
+        }
+
+        .draggable-image img {
+            width: 150%; 
+            height: 150%; 
+            pointer-events: none;
+            -webkit-user-drag: none;
+        }
+
+        /* Custom Audio Player & Controls styling */
+        #controls-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 95%;
+            max-width: 800px;
+            margin-top: 15px;
+        }
+
+        #audio-player-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #1e293b;
+            padding: 10px 20px;
+            border-radius: 30px;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #334155;
+        }
+
+        #play-btn {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #play-btn:hover {
+            background-color: #2563eb;
+        }
+
+        #progress-bar-container {
+            flex-grow: 1;
+            height: 8px;
+            background-color: #475569;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        #progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background-color: #3b82f6;
+            border-radius: 4px;
+        }
+
+        #time-display {
+            font-size: 12px;
+            color: #94a3b8;
+            min-width: 75px;
+            text-align: right;
+        }
+
+        .buttons-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Original button styles */
+        .control-button {
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background-color 0.3s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #restart-button {
+            background-color: #ef4444;
+        }
+        #restart-button:hover {
+            background-color: #dc2626;
+        }
+
+        /* Green Check Button Styling */
+        #check-button {
+            background-color: #22c55e;
+        }
+        #check-button:hover {
+            background-color: #16a34a;
+        }
+
+        /* Modal window styles for script display */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; 
+            z-index: 100; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(15, 23, 42, 0.85); /* Slate-900 with opacity */
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: #1e293b; /* Slate-800 */
+            color: #f1f5f9;
+            margin: auto;
+            padding: 25px;
+            border: 1px solid #334155;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+
+        .modal.show .modal-content {
+            transform: scale(1);
+        }
+
+        .close-button {
+            position: absolute;
+            top: 12px;
+            right: 15px;
+            color: #94a3b8;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: #f1f5f9;
+            text-decoration: none;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            color: #e9d5ff; /* Purple-200 */
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+        }
+
+        .modal-body {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #f1f5f9;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-header">
+        <div id="level-nav-container">
+            <button id="prev-level-btn" class="nav-arrow" title="Previous Level">&#8592;</button>
+            <div id="level-indicator">Level 1 of 10</div>
+            <button id="next-level-btn" class="nav-arrow" title="Next Level">&#8594;</button>
+        </div>
+        <div id="level-instruction">Listening Exercise: Play the audio and move the items on screen.</div>
+    </div>
+
+    <!-- Sandbox Container (Height adjusted, elements move freely) -->
+    <div id="drag-container">
+        <!-- Draggable elements are generated here dynamically -->
+        <div id="items-wrapper"></div>
+    </div>
+
+    <!-- Controls, Audio Player, and Action buttons -->
+    <div id="controls-panel">
+        <div id="audio-player-container">
+            <button id="play-btn">Play Audio</button>
+            <div id="progress-bar-container">
+                <div id="progress-bar-fill"></div>
+            </div>
+            <div id="time-display">0:00 / 0:00</div>
+            <audio id="audio-node"></audio>
+        </div>
+
+        <div class="buttons-group">
+            <button id="restart-button" class="control-button">Reset Layout</button>
+            <button id="check-button" class="control-button">Check</button>
+        </div>
+    </div>
+
+    <!-- Script Modal Container -->
+    <div id="script-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-modal">&times;</span>
+            <h3 class="modal-title" id="modal-title">Audio Script</h3>
+            <div class="modal-body" id="modal-body">
+                <!-- Script text goes here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Definition of the 10 Situational Levels with exactly 40 unique images (4 unique per level)
+        const levels = [
+            {
+                level: 1,
+                audio: "level1.mp3",
+                instruction: "First, drag the umbrella. Second, grab the cup. Third, move the wallet. Last, place the keys.",
+                script: '"Are we going to the beach this weekend?" "It all depends on the weather. If it rains, we\'ll probably just stay home."',
+                items: [
+                    { id: "umbrella", src: "1.png", alt: "Umbrella" },
+                    { id: "cup", src: "2.png", alt: "Cup" },
+                    { id: "wallet", src: "3.png", alt: "Wallet" },
+                    { id: "keys", src: "4.png", alt: "Keys" }
+                ]
+            },
+            {
+                level: 2,
+                audio: "level2.mp3",
+                instruction: "First, place the phone down. Then, drag the bag. Next, move the glasses. Finally, drag the tissue.",
+                script: '"I thought the test was going to be super hard, but it was completely the opposite—it was really easy!"',
+                items: [
+                    { id: "phone", src: "5.png", alt: "Phone" },
+                    { id: "bag", src: "6.png", alt: "Bag" },
+                    { id: "glasses", src: "7.png", alt: "Glasses" },
+                    { id: "tissue", src: "8.png", alt: "Tissue" }
+                ]
+            },
+            {
+                level: 3,
+                audio: "level3.mp3",
+                instruction: "First move the watch, then move the book, next drag the pen, and lastly move the comb.",
+                script: '"I\'m leaving for the airport now. If I\'m lucky, I won\'t hit any traffic and I\'ll get there early."',
+                items: [
+                    { id: "watch", src: "9.png", alt: "Watch" },
+                    { id: "book", src: "10.png", alt: "Book" },
+                    { id: "pen", src: "11.png", alt: "Pen" },
+                    { id: "comb", src: "12.png", alt: "Comb" }
+                ]
+            },
+            {
+                level: 4,
+                audio: "level4.mp3",
+                instruction: "Bring the camera first, then bring the watch, next drag the mouse, and finally move the pen.",
+                script: '"The concert was so crowded, but I managed to get a glimpse of the singer when he walked past the backstage door."',
+                items: [
+                    { id: "camera", src: "13.png", alt: "Camera" },
+                    { id: "mouse", src: "14.png", alt: "Mouse" },
+                    { id: "headphones", src: "15.png", alt: "Headphones" },
+                    { id: "laptop", src: "16.png", alt: "Laptop" }
+                ]
+            },
+            {
+                level: 5,
+                audio: "level5.mp3",
+                instruction: "Move the clock, then drag the scissors, next place the mirror, and finally drag the bottle.",
+                script: '"Starting a new job can be a bit overwhelming at first because there is just so much information to learn."',
+                items: [
+                    { id: "clock", src: "17.png", alt: "Clock" },
+                    { id: "scissors", src: "18.png", alt: "Scissors" },
+                    { id: "mirror", src: "19.png", alt: "Mirror" },
+                    { id: "bottle", src: "20.png", alt: "Bottle" }
+                ]
+            },
+            {
+                level: 6,
+                audio: "level6.mp3",
+                instruction: "First is the scarf, second is the gloves, third is the boots, and fourth is the hat.",
+                script: '"Since I started working the night shift, I\'ve had to completely change my rhythm and sleep during the day."',
+                items: [
+                    { id: "scarf", src: "21.png", alt: "Scarf" },
+                    { id: "gloves", src: "22.png", alt: "Gloves" },
+                    { id: "boots", src: "23.png", alt: "Boots" },
+                    { id: "hat", src: "24.png", alt: "Hat" }
+                ]
+            },
+            {
+                level: 7,
+                audio: "level7.mp3",
+                instruction: "Move the coat first, followed by the sweater, then socks, and lastly drag the thermos.",
+                script: '"I had to stay up all night to finish studying for my final exam, and now I\'m absolutely exhausted."',
+                items: [
+                    { id: "coat", src: "25.png", alt: "Coat" },
+                    { id: "sweater", src: "26.png", alt: "Sweater" },
+                    { id: "socks", src: "5.png", alt: "Socks" },
+                    { id: "thermos", src: "28.png", alt: "Thermos" }
+                ]
+            },
+            {
+                level: 8,
+                audio: "level8.mp3",
+                instruction: "Grab the lantern first, drag the map next, then move the compass, and finally the backpack.",
+                script: '"It’s Saturday tomorrow, so I don\'t have to set an alarm. I’m definitely going to sleep in."',
+                items: [
+                    { id: "lantern", src: "29.png", alt: "Lantern" },
+                    { id: "map", src: "30.png", alt: "Map" },
+                    { id: "compass", src: "31.png", alt: "Compass" },
+                    { id: "backpack", src: "32.png", alt: "Backpack" }
+                ]
+            },
+            {
+                level: 9,
+                audio: "level9.mp3",
+                instruction: "Drag the notebook, then move the highlighter, next place the tablet, and lastly bring the keyboard.",
+                script: '"You have to visit the mountains during sunset. The view from the top is beyond beautiful."',
+                items: [
+                    { id: "notebook", src: "33.png", alt: "Notebook" },
+                    { id: "highlighter", src: "34.png", alt: "Highlighter" },
+                    { id: "tablet", src: "35.gif", alt: "Tablet" },
+                    { id: "keyboard", src: "36.png", alt: "Keyboard" }
+                ]
+            },
+            {
+                level: 10,
+                audio: "level10.mp3",
+                instruction: "Move the calendar first, then place the mug, next drag the tea bag, and lastly move the spoon.",
+                script: '"I feel like I\'ve been doing chores all day. This pile of laundry is never-ending!"',
+                items: [
+                    { id: "calendar", src: "37.png", alt: "Calendar" },
+                    { id: "mug", src: "24.png", alt: "Mug" },
+                    { id: "teabag", src: "39.png", alt: "Tea bag" },
+                    { id: "spoon", src: "40.png", alt: "Spoon" }
+                ]
+            }
+        ];
+
+        let currentLevelIndex = 0;
+        let activeImage = null;
+        let offset = { x: 0, y: 0 };
+
+        const container = document.getElementById('drag-container');
+        const itemsWrapper = document.getElementById('items-wrapper');
+        const levelIndicator = document.getElementById('level-indicator');
+        
+        // Audio Player DOM elements
+        const audioNode = document.getElementById('audio-node');
+        const playBtn = document.getElementById('play-btn');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const progressBarContainer = document.getElementById('progress-bar-container');
+        const timeDisplay = document.getElementById('time-display');
+
+        const restartButton = document.getElementById('restart-button');
+        const checkButton = document.getElementById('check-button');
+
+        // Modal elements
+        const scriptModal = document.getElementById('script-modal');
+        const closeModal = document.getElementById('close-modal');
+        const modalBody = document.getElementById('modal-body');
+        const modalTitle = document.getElementById('modal-title');
+
+        // Navigation Arrows
+        const prevLevelBtn = document.getElementById('prev-level-btn');
+        const nextLevelBtn = document.getElementById('next-level-btn');
+
+        // Web Audio API Synthesizer Context
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // Web Audio synthesized subtle sound effects
+        function playClickSound() {
+            try {
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(1000, ctx.currentTime); // Crisp click pitch
+                
+                gain.gain.setValueAtTime(0.04, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start();
+                osc.stop(ctx.currentTime + 0.05);
+            } catch (e) {
+                console.warn("Audio synthesis ignored/failed before user interaction", e);
+            }
+        }
+
+        function playGrabSound() {
+            try {
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(140, ctx.currentTime); // Soft low-frequency pop
+                osc.frequency.exponentialRampToValueAtTime(70, ctx.currentTime + 0.08);
+                
+                gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start();
+                osc.stop(ctx.currentTime + 0.08);
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
+        function playReleaseSound() {
+            try {
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(260, ctx.currentTime); // Light tap sound
+                osc.frequency.exponentialRampToValueAtTime(130, ctx.currentTime + 0.06);
+                
+                gain.gain.setValueAtTime(0.06, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start();
+                osc.stop(ctx.currentTime + 0.06);
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
+        function initLevel(index) {
+            const currentLevel = levels[index];
+            
+            // UI header
+            levelIndicator.innerText = `Level ${currentLevel.level} of 10`;
+
+            // Clear previous images
+            itemsWrapper.innerHTML = '';
+
+            // Setup audio player source
+            audioNode.src = currentLevel.audio;
+            audioNode.load();
+            resetAudioUI();
+
+            // Render current level's 4 items
+            currentLevel.items.forEach(item => {
+                const imgDiv = document.createElement('div');
+                imgDiv.id = item.id;
+                imgDiv.className = 'draggable-image';
+                
+                const img = document.createElement('img');
+                img.src = item.src;
+                img.alt = item.alt;
+
+                // Emoji fallback system if local directories are empty
+                img.onerror = function() {
+                    img.style.display = 'none';
+                    imgDiv.innerText = getEmojiFallback(item.id);
+                };
+                
+                imgDiv.appendChild(img);
+                itemsWrapper.appendChild(imgDiv);
+
+                // Original coordinate drag events
+                imgDiv.addEventListener('mousedown', handleMouseDown);
+                imgDiv.addEventListener('touchstart', handleMouseDown, { passive: false });
+            });
+
+            // Scatter freely across sandbox area
+            scatterImages();
+        }
+
+        // Return a fallback emoji matching all 40 element ids
+        function getEmojiFallback(id) {
+            const fallbacks = {
+                umbrella: "⛱️",
+                cup: "☕",
+                wallet: "👛",
+                keys: "🔑",
+                phone: "📱",
+                bag: "🎒",
+                glasses: "👓",
+                tissue: "🧻",
+                watch: "⌚",
+                book: "📘",
+                pen: "🖊️",
+                comb: "🪮",
+                camera: "📷",
+                mouse: "🖱️",
+                headphones: "🎧",
+                laptop: "💻",
+                clock: "⏰",
+                scissors: "✂️",
+                mirror: "🪞",
+                bottle: "🍼",
+                scarf: "🧣",
+                gloves: "🧤",
+                boots: "🥾",
+                hat: "🧢",
+                coat: "🧥",
+                sweater: "🧶",
+                socks: "🧦",
+                thermos: "🧉",
+                lantern: "🏮",
+                map: "🗺️",
+                compass: "🧭",
+                backpack: "🎒",
+                notebook: "📔",
+                highlighter: "🖍️",
+                tablet: "📱",
+                keyboard: "⌨️",
+                calendar: "📅",
+                mug: "🍺",
+                teabag: "🍵",
+                spoon: "🥄"
+            };
+            return fallbacks[id] || "❓";
+        }
+
+        // Exact coordinate drag system
+        function handleMouseDown(event) {
+            const target = event.target.closest('.draggable-image');
+            if (!target) return;
+
+            // Touch unlock on iOS / Android AudioContext
+            getAudioContext();
+
+            activeImage = target;
+            const rect = activeImage.getBoundingClientRect();
+            let clientX, clientY;
+            if (event.type === 'touchstart') {
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+
+            offset.x = clientX - rect.left;
+            offset.y = clientY - rect.top;
+
+            activeImage.style.zIndex = '10';
+
+            playGrabSound(); // Trigger grab feedback sound
+
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            document.addEventListener('touchmove', handleMouseMove, { passive: false });
+            document.addEventListener('touchend', handleMouseUp);
+        }
+
+        function handleMouseMove(event) {
+            if (!activeImage) return;
+
+            let clientX, clientY;
+            if (event.type === 'touchmove') {
+                // Critical block to prevent iOS bouncy screen scrolling when dragging elements
+                event.preventDefault(); 
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+            const containerRect = container.getBoundingClientRect();
+
+            let newX = clientX - containerRect.left - offset.x;
+            let newY = clientY - containerRect.top - offset.y;
+
+            const imgRect = activeImage.getBoundingClientRect();
+            // Keep the image within the container bounds
+            if (newX < 0) {
+                newX = 0;
+            } else if (newX > containerRect.width - imgRect.width) {
+                newX = containerRect.width - imgRect.width;
+            }
+            if (newY < 0) {
+                newY = 0;
+            } else if (newY > containerRect.height - imgRect.height) {
+                newY = containerRect.height - imgRect.height;
+            }
+
+            activeImage.style.left = `${newX}px`;
+            activeImage.style.top = `${newY}px`;
+        }
+
+        // Mouse release boundary logic
+        function handleMouseUp() {
+            if (!activeImage) return;
+            activeImage.style.zIndex = '1';
+            activeImage = null;
+
+            playReleaseSound(); // Trigger release feedback sound
+
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('touchmove', handleMouseMove);
+            document.removeEventListener('touchend', handleMouseUp);
+        }
+
+        // Keep elements cleanly in-bound when rotating devices (clamping check)
+        function clampPositionsOnResize() {
+            const containerRect = container.getBoundingClientRect();
+            const containerW = containerRect.width || container.clientWidth || 800;
+            const containerH = containerRect.height || container.clientHeight || 250;
+
+            const images = document.querySelectorAll('.draggable-image');
+            images.forEach(image => {
+                const imgW = image.offsetWidth || 75;
+                const imgH = image.offsetHeight || 75;
+
+                let currentX = parseFloat(image.style.left) || 0;
+                let currentY = parseFloat(image.style.top) || 0;
+
+                // Adjust bounds if out of viewport post-resize
+                if (currentX > containerW - imgW) {
+                    image.style.left = `${Math.max(0, containerW - imgW)}px`;
+                }
+                if (currentY > containerH - imgH) {
+                    image.style.top = `${Math.max(0, containerH - imgH)}px`;
+                }
+            });
+        }
+
+        // Scatter implementation (uses dynamic container bounds with absolute fallback safety)
+        function scatterImages() {
+            const containerRect = container.getBoundingClientRect();
+            const containerW = containerRect.width || container.clientWidth || 800;
+            const containerH = containerRect.height || container.clientHeight || 250;
+
+            const images = document.querySelectorAll('.draggable-image');
+            images.forEach(image => {
+                const imgW = image.offsetWidth || 75;
+                const imgH = image.offsetHeight || 75;
+
+                const randomX = Math.random() * (containerW - imgW);
+                const randomY = Math.random() * (containerH - imgH);
+                image.style.left = `${randomX}px`;
+                image.style.top = `${randomY}px`;
+            });
+        }
+
+        // Custom Audio player behaviors
+        playBtn.addEventListener('click', () => {
+            playClickSound(); // Trigger tactile click sound
+            if (audioNode.paused) {
+                audioNode.play().then(() => {
+                    playBtn.innerText = "Pause Audio";
+                }).catch((err) => {
+                    // Fallback synthesis removed entirely per user request.
+                    // We now log the issue and temporarily change button text to alert the user.
+                    console.warn("Audio play failed or file not found:", err);
+                    playBtn.innerText = "Audio Error";
+                    setTimeout(() => { playBtn.innerText = "Play Audio"; }, 2000);
+                });
+            } else {
+                audioNode.pause();
+                playBtn.innerText = "Play Audio";
+            }
+        });
+
+        audioNode.addEventListener('timeupdate', () => {
+            const pct = (audioNode.currentTime / audioNode.duration) * 100;
+            progressBarFill.style.width = `${pct}%`;
+            timeDisplay.innerText = `${formatTime(audioNode.currentTime)} / ${formatTime(audioNode.duration || 0)}`;
+        });
+
+        audioNode.addEventListener('ended', resetAudioUI);
+
+        progressBarContainer.addEventListener('click', (e) => {
+            playClickSound(); // Trigger tactile click sound on timeline adjustment
+            const rect = progressBarContainer.getBoundingClientRect();
+            const percent = (e.clientX - rect.left) / rect.width;
+            if (audioNode.duration) {
+                audioNode.currentTime = percent * audioNode.duration;
+            }
+        });
+
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60);
+            const s = Math.floor(sec % 60);
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        function resetAudioUI() {
+            playBtn.innerText = "Play Audio";
+            progressBarFill.style.width = '0%';
+            timeDisplay.innerText = "0:00 / 0:00";
+        }
+
+        // Previous and Next Level Subtle Arrow handlers
+        prevLevelBtn.addEventListener('click', () => {
+            playClickSound(); // Trigger tactile click sound
+            if (currentLevelIndex > 0) {
+                currentLevelIndex--;
+                initLevel(currentLevelIndex);
+            }
+        });
+
+        nextLevelBtn.addEventListener('click', () => {
+            playClickSound(); // Trigger tactile click sound
+            if (currentLevelIndex < levels.length - 1) {
+                currentLevelIndex++;
+                initLevel(currentLevelIndex);
+            }
+        });
+
+        restartButton.addEventListener('click', () => {
+            playClickSound(); // Trigger tactile click sound
+            scatterImages();
+        });
+
+        // Script Modal show and hide events
+        checkButton.addEventListener('click', () => {
+            playClickSound(); // Trigger tactile click sound
+            const currentLevel = levels[currentLevelIndex];
+            modalTitle.innerText = `Level ${currentLevel.level} - Audio Script`;
+            modalBody.innerHTML = currentLevel.script;
+            
+            scriptModal.style.display = 'flex';
+            // Simple transition timeout to let display value render before showing opacity
+            setTimeout(() => {
+                scriptModal.classList.add('show');
+            }, 10);
+        });
+
+        function closeScriptModal() {
+            playClickSound();
+            scriptModal.classList.remove('show');
+            setTimeout(() => {
+                scriptModal.style.display = 'none';
+            }, 300);
+        }
+
+        closeModal.addEventListener('click', closeScriptModal);
+
+        // Click outside modal content box to close
+        window.addEventListener('click', (event) => {
+            if (event.target === scriptModal) {
+                closeScriptModal();
+            }
+        });
+
+        // Initialize Level 1 on Window Load
+        window.onload = function() {
+            initLevel(currentLevelIndex);
+        };
+
+        // Screen geometry change safety listeners
+        window.addEventListener('resize', () => {
+            clampPositionsOnResize();
+        });
+        window.addEventListener('orientationchange', () => {
+            setTimeout(clampPositionsOnResize, 150); // Small layout settling delay
+        });
+
+        // Global viewport unlock touch gesture to initialize Web Audio strictly before actions occur
+        document.body.addEventListener('touchstart', () => {
+            getAudioContext();
+        }, { once: true });
+        document.body.addEventListener('mousedown', () => {
+            getAudioContext();
+        }, { once: true });
+    </script>
+</body>
+</html>
